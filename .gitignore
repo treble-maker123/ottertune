@@ -1,3 +1,8 @@
+# project specific files
+tags
+project3_dataset
+._project3_dataset
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
