@@ -1,6 +1,6 @@
 # Ottertune Clustering
 
-Project to improve cluster and metric pruning in [OtterTune](https://www.cs.cmu.edu/~ggordon/van-aken-etal-parameters.pdf) for CS645 Database Design and Implementation project.
+Project to improve cluster and metric pruning in [OtterTune](https://www.cs.cmu.edu/~ggordon/van-aken-etal-parameters.pdf) for [CS645 Database Design and Implementation](http://avid.cs.umass.edu/courses/645/s2020/index.html).
 
 ## Setup
 
