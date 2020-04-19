@@ -3,6 +3,9 @@ tags
 project3_dataset
 ._project3_dataset
 
+outputs/*
+!outputs/.gitkeep # keep this
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
