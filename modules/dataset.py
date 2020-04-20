@@ -30,39 +30,41 @@ class Dataset:
         """
         Returns a pandas dataframe that contains the specified data file.
         """
-        if not self._dataframe:
+        if self._dataframe is None:
             self._dataframe = pd.read_csv(self._file_path)
 
         return self._dataframe
 
     def get_headers(self) -> List[str]:
         """
-        Returns a list of headers from the data file. This method excludes the
-        first header 'workdload id'
+        Returns a list of headers from the data file.
         """
-        return self.get_dataframe().columns.values.tolist()[1:]
+        return self.get_dataframe().columns.values.tolist()
 
-    def get_metrics(self, unique: bool = True) -> np.ndarray:
+    def get_metrics(self) -> np.ndarray:
         """
-        Returns the data in a numpy array. Note that the first columnm
-        ('workload id') is discarded, and the resulting array is converted
-        from an object array into a float array, i.e. True and False values are
-        converted into 1.0 and 0.0.
-
-        Args:
-            unique: whether to trim columns with values that do not change.
+        Returns the metrics in a numpy array. Note that this method discards
+        the columns 'workload id', 'k1' to 'k8', 's1' to 's4', as well as the
+        'latency' column.
 
         Returns:
             An array of dimension [NUM_WORKLOADS * NUM_METRICS].
         """
-        metrics = self.get_dataframe().values[:, 1:].astype(float)
+        #  metrics = self.get_dataframe().values[:, 1:].astype(float)
+        df = self.get_dataframe().copy(deep=True)
 
-        if unique:
-            the_same = metrics.max(axis=1) == metrics.min(axis=1)
-            idx_to_remove = np.argwhere(the_same).squeeze()
-            metrics = np.delete(metrics, idx_to_remove, axis=1)
+        # drop 'workload id' and 'latency' column
+        df.drop(['workload id', 'latency'], axis=1, inplace=True)
 
-        return metrics
+        # drop k1 - k8 columns
+        df.drop([f"k{i}" for i in range(1, 9, 1)], axis=1, inplace=True)
+
+        # drop s1 - s4 columns
+        df.drop([f"s{i}" for i in range(1, 5, 1)], axis=1, inplace=True)
+
+        assert len(self.get_dataframe().columns) == (len(df.columns) + 14)
+
+        return df.values.astype(float)
 
     @classmethod
     def bin_metrics(cls, metrics: np.ndarray,
