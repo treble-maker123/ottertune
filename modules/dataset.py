@@ -41,6 +41,29 @@ class Dataset:
         """
         return self.get_dataframe().columns.values.tolist()
 
+    def get_tuning_knob_headers(self) -> List[str]:
+        """
+        Returns a list of headers for the tuning knobs.
+        """
+        return [f"k{i}" for i in range(1, 9, 1)] \
+            + [f"s{i}" for i in range(1, 5, 1)]
+
+    def get_non_metric_headers(self) -> List[str]:
+        """
+        Returns a list of headers that include the knobs, 'workload id', and
+        'latency'.
+        """
+        return self.get_tuning_knob_headers() + ['workload id', 'latency']
+
+    def get_metric_headers(self) -> List[str]:
+        """
+        Returns a list of headers that exclude 'workdload id', the tuning
+        knobs, as well as 'latency'.
+        """
+        non_metric_headers = self.get_non_metric_headers()
+        all_headers = self.get_headers()
+        return [h for h in all_headers if h not in non_metric_headers]
+
     def get_metrics(self) -> np.ndarray:
         """
         Returns the metrics in a numpy array. Note that this method discards
@@ -50,21 +73,9 @@ class Dataset:
         Returns:
             An array of dimension [NUM_WORKLOADS * NUM_METRICS].
         """
-        #  metrics = self.get_dataframe().values[:, 1:].astype(float)
-        df = self.get_dataframe().copy(deep=True)
-
-        # drop 'workload id' and 'latency' column
-        df.drop(['workload id', 'latency'], axis=1, inplace=True)
-
-        # drop k1 - k8 columns
-        df.drop([f"k{i}" for i in range(1, 9, 1)], axis=1, inplace=True)
-
-        # drop s1 - s4 columns
-        df.drop([f"s{i}" for i in range(1, 5, 1)], axis=1, inplace=True)
-
-        assert len(self.get_dataframe().columns) == (len(df.columns) + 14)
-
-        return df.values.astype(float)
+        dataframe = self.get_dataframe().copy(deep=True)
+        dataframe.drop(self.get_non_metric_headers(), axis=1, inplace=True)
+        return dataframe.values.astype(float)
 
     @classmethod
     def bin_metrics(cls, metrics: np.ndarray,
