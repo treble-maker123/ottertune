@@ -8,6 +8,7 @@ from argparse import Namespace, ArgumentParser
 from pdb import set_trace
 from time import time
 
+import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
 
@@ -25,7 +26,8 @@ def build_config() -> Namespace:
                         help='The dataset to use, one of "offline_workload", '
                              '"online_worload_B", "online_workload_C", or '
                              '"test"')
-    parser.add_argument('--output-path', type=str, default='pruned_metrics.csv',
+    parser.add_argument('--output-path', type=str,
+                        default='outputs/pruned_metrics.csv',
                         help='The output path and file name of this script.')
 
     # https://github.com/cmu-db/ottertune/blob/d47b09b0c096312e26336fd38d4c76ccc02adda3/server/website/website/tasks/periodic_tasks.py#L297
@@ -46,13 +48,14 @@ def main():
     """
     dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
     metrics = dataset.get_metrics()
-    metrics = Dataset.bin_metrics(metrics)
+    metrics = Dataset.bin_metrics(metrics)  # output: num_config * num_metrics
+    metrics = metrics.T  # output: num_metrics * num_config
 
     # factor analysis
     LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
     start = time()
     model = FactorAnalysis(n_components=CONFIG.num_factors)
-    factors = model.fit_transform(metrics)  # num_worloads * num_factors
+    factors = model.fit_transform(metrics)  # num_metrics * num_factors
     LOG.debug('Dimension before factor analysis: %s', metrics.shape)
     LOG.debug('Dimension after factor analysis: %s', factors.shape)
     LOG.info('Finished factor analysis in %s seconds.', round(time()-start))
@@ -62,12 +65,27 @@ def main():
     start = time()
     model = KMeans(n_clusters=CONFIG.num_clusters, n_init=50, max_iter=500)
     model = model.fit(factors)
-    LOG.info('Finished K-means clusteringin %s seconds.', round(time()-start))
+    LOG.info('Finished K-means clustering in %s seconds.', round(time()-start))
 
     # find cluster center
-    # TODO: Finish code to pick out cluster centers
-    #  labels = model.labels_
-    #  cluster_centers = model.cluster_centers_
+    labels = model.labels_
+    # each dimension in transformed_data is the distance to the cluster
+    # centers.
+    transformed_data = model.transform(factors)
+    metric_headers = dataset.get_metric_headers()
+    leftover_metrics = []
+    for i in np.unique(labels):
+        # index of the points for the ith cluster
+        cluster_member_idx = np.argwhere(labels == i).squeeze()
+        cluster_members = transformed_data[cluster_member_idx]
+        # find the index of the minimum-distance point to the center
+        closest_member = cluster_member_idx[np.argmin(cluster_members[:, i])]
+        leftover_metrics.append(metric_headers[closest_member])
+
+    # TODO: check the indices correspond to the correct columns
+
+    with open(CONFIG.output_path, 'w') as file:
+        file.writelines(leftover_metrics)
 
 
 if __name__ == "__main__":
