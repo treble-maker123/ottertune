@@ -27,7 +27,7 @@ def build_config() -> Namespace:
                              '"online_worload_B", "online_workload_C", or '
                              '"test"')
     parser.add_argument('--output-path', type=str,
-                        default='outputs/pruned_metrics.csv',
+                        default='outputs/pruned_metrics.txt',
                         help='The output path and file name of this script.')
 
     # https://github.com/cmu-db/ottertune/blob/d47b09b0c096312e26336fd38d4c76ccc02adda3/server/website/website/tasks/periodic_tasks.py#L297
@@ -85,7 +85,7 @@ def main():
     # TODO: check the indices correspond to the correct columns
 
     with open(CONFIG.output_path, 'w') as file:
-        file.writelines(leftover_metrics)
+        file.writelines('\n'.join(leftover_metrics))
 
 
 if __name__ == "__main__":
