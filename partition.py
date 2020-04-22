@@ -63,7 +63,7 @@ def main():
         online_ids = np.array(
             [j for j in online_ids if j not in online_part_ids])
 
-        LOG.info('Finished writing partiton %s.', i)
+        LOG.info('Finished writing partition %s.', i)
 
 
 if __name__ == '__main__':

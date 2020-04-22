@@ -1,8 +1,9 @@
 """
 This module supplies classes and methods for interacting with the dataset.
 """
+import os
 from pdb import set_trace
-from typing import List, Union
+from typing import List, Union, Tuple
 
 import pandas as pd
 import numpy as np
@@ -86,8 +87,8 @@ class Dataset:
         """
         Returns a list of headers for the tuning knobs.
         """
-        return [f"k{i}" for i in range(1, 9, 1)]
-        + [f"s{i}" for i in range(1, 5, 1)]
+        return [f"k{i}" for i in range(1, 9, 1)] \
+            + [f"s{i}" for i in range(1, 5, 1)]
 
     def get_non_metric_headers(self) -> List[str]:
         """
@@ -154,3 +155,36 @@ class Dataset:
         assert binned_metrics.min() > 0, f"Min is {binned_metrics.min()}"
 
         return binned_metrics
+
+    @classmethod
+    def build_dataset_from_partition(cls, part_idx: int) \
+            -> Tuple['Dataset', 'Dataset']:
+        """
+        This method will build a training and validation dataset from the
+        partitions, using valid_partition as the index for setting aside
+        the validation set.
+
+        Args:
+            part_idx: the index of the partition to be used for validation.
+
+        Returns:
+            A tuple of Datasets, the first containing the training workloads
+            and the second containing the validation workloads.
+        """
+        # look for the partition files
+        prefix = f"./{DATA_PATH_PREFIX}/"
+        files = [f"{prefix}{p}" for p in os.listdir(prefix)
+                 if 'workload_partition' in p]
+
+        # check that the given index is valid
+        valid_file = f"{prefix}workload_partition_{part_idx}.csv"
+        files.remove(valid_file)  # throws error if file not exist
+
+        # build the training dataframes
+        train_dataframes = [pd.read_csv(f) for f in files]
+        train_dataframe = pd.concat(train_dataframes, ignore_index=True)
+
+        # build the validation dataframes
+        valid_dataframe = pd.read_csv(valid_file)
+
+        return cls(dataframe=train_dataframe), cls(dataframe=valid_dataframe)

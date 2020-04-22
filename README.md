@@ -8,3 +8,5 @@ Project to improve cluster and metric pruning in [OtterTune](https://www.cs.cmu.
 2.  To setup the conda environment (see guide on Miniconda installation [here](https://docs.conda.io/en/latest/miniconda.html)), run `conda env create -f environment.yml`,
 
 NOTE: If you add packages to conda, delete the original `environment.yml` file and run `conda env export --from-history | grep -v "^prefix: " > environment.yml` to generate a new one with the addition you have made.
+
+3.  After extracting the data and setting up the environment, run `python3 partition.py --num-sets=n` to create **n** sets of partitions of data for training and validation, and the results will be written in the data folder as `workload_partition_i.csv` where `i = 1...n`. The class method `Dataset.build_dataset_from_partition()` can then be used to build a pair of training and validation set from the partitions. 
