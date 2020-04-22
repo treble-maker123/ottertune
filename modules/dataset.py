@@ -2,7 +2,7 @@
 This module supplies classes and methods for interacting with the dataset.
 """
 from pdb import set_trace
-from typing import List
+from typing import List, Union
 
 import pandas as pd
 import numpy as np
@@ -22,17 +22,58 @@ class Dataset:
     This class contains methods to manipulate the data files.
     """
 
-    def __init__(self, file_path: str):
-        self._file_path = file_path
-        self._dataframe = None
+    def __init__(self, file_path: str = None, dataframe: pd.DataFrame = None):
+        if file_path is not None:
+            self._dataframe = pd.read_csv(file_path)
+        elif dataframe is not None:
+            self._dataframe = dataframe
+        else:
+            raise ValueError("Either file_path or dataframe must be passed "
+                             "to Dataset constructor.")
+
+    def __add__(self, other: 'Dataset') -> 'Dataset':
+        """
+        Overloads the '+' operator so that `dataset1 + dataset2` gives a
+        dataset that is the union of both datasets.
+        """
+        this_headers = self.get_headers()
+        other_headers = other.get_headers()
+
+        # make sure the headers match
+        for header in other_headers:
+            assert header in this_headers
+
+        dataframes = [self.get_dataframe(), other.get_dataframe()]
+        return Dataset(dataframe=pd.concat(dataframes, ignore_index=True))
+
+    def __len__(self) -> int:
+        """
+        Overloads len() to return the size of the dataframe.
+        """
+        return len(self.get_dataframe())
+
+    def __getitem__(self, index: int) -> pd.Series:
+        """
+        Overloads dataset[0] to return the corresponding series in dataframe.
+        """
+        return self.get_dataframe().iloc[index]
+
+    def get_items(self, indices: List[int]) -> pd.DataFrame:
+        """
+        Return a new DataFrame with the specified rows.
+        """
+        return self.get_dataframe().iloc[indices].reset_index(drop=True)
+
+    def get_column_values(self, col_header: str) -> List[Union[str, int, float]]:
+        """
+        Returns all of the values of the given column as a list of strings.
+        """
+        return self.get_dataframe()[col_header].tolist()
 
     def get_dataframe(self) -> pd.DataFrame:
         """
         Returns a pandas dataframe that contains the specified data file.
         """
-        if self._dataframe is None:
-            self._dataframe = pd.read_csv(self._file_path)
-
         return self._dataframe
 
     def get_headers(self) -> List[str]:
@@ -45,8 +86,8 @@ class Dataset:
         """
         Returns a list of headers for the tuning knobs.
         """
-        return [f"k{i}" for i in range(1, 9, 1)] \
-            + [f"s{i}" for i in range(1, 5, 1)]
+        return [f"k{i}" for i in range(1, 9, 1)]
+        + [f"s{i}" for i in range(1, 5, 1)]
 
     def get_non_metric_headers(self) -> List[str]:
         """
