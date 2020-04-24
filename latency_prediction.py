@@ -52,13 +52,13 @@ def create_s_matrix(dataset) -> Dict[str, Dict[str, List[float]]]:
 
     # Gets the list of all unique DBMS configurations
     config_cols = np.swapaxes([dataset.get_column_values(t) for t in dataset.get_tuning_knob_headers()], 0, 1)
-    unique_configurations = list(set(tuple(i) for i in [list(t) for t in list(config_cols)]))
+    unique_configurations = sorted(list(set(tuple(i) for i in [list(t) for t in list(config_cols)])))
 
     # Gets list of metrics
     metric_headers = dataset.get_metric_headers()
 
     # Generates list of unique worklaod IDs
-    unique_workloads = list(set(dataset.get_column_values(dataset.get_headers()[0])))
+    unique_workloads = sorted(list(set(dataset.get_column_values(dataset.get_headers()[0]))))
 
     # Forms a matrix for each metric, putting them all in a dict called s (representing matrix S in paper)
     for metric in metric_headers:
@@ -82,21 +82,63 @@ def create_s_matrix(dataset) -> Dict[str, Dict[str, List[float]]]:
                     curr_row[idx] = wl_metric_values[wl_idx]
                 # paper mentions median of values if spot in row is already filled, doesn't seem to occur
             curr_matrix[wl] = curr_row
-            if max(curr_row) > 0: print(wl, max(curr_row))
         s[metric] = curr_matrix
-        for t in s.keys():
-            print(t)
-            print(s[t].keys(), '\n')
     return s
 
 
-def workload_mapping(s_matrix):
+def workload_mapping(input_workload, s_matrix, dataset) -> int:
     """
     Method that computes the workload mapping, as described on pg. 7 of the original paper.
+    Finds the workload in the dataset that is closest to the input workload.
     """
-    
+    def s_matrix_to_numpy_array(s_mat):
+        output_s_mat = []
+        for X in s_mat.keys():
+            curr_mat = []
+            for ij in s_mat[X].keys():
+                curr_mat.append(s_mat[X][ij])
+            output_s_mat.append(curr_mat)
+        return np.array(output_s_mat)
 
-    return 0
+    def workload_to_s_row(workload, metric_idx):
+        if len(workload.shape) == 1:
+            s_idx = unique_configurations.index(tuple(workload[1:13]))
+            s_row = [0] * len(unique_configurations)
+            s_row[s_idx] = workload[13+metric_idx]
+
+        else:
+            s_row = [0] * len(unique_configurations)
+            for i in range(workload.shape[0]):
+                s_idx = unique_configurations.index(tuple(workload[i, 1:13]))
+                s_row[s_idx] = workload[13+metric_idx]
+        return np.array(s_row)
+
+    # Convert S matrix to np array
+    np_s_matrix = s_matrix_to_numpy_array(s_matrix)
+
+    # Make a copy of the np_s_matrix for making bins
+    np_s_matrix_binned = np.array(np_s_matrix)
+
+    # Helpful information -- unique configurations & workloads
+    config_cols = np.swapaxes([dataset.get_column_values(t) for t in dataset.get_tuning_knob_headers()], 0, 1)
+    unique_configurations = sorted(list(set(tuple(i) for i in [list(t) for t in list(config_cols)])))
+    unique_workloads = sorted(list(set(dataset.get_column_values(dataset.get_headers()[0]))))
+    num_unique_workloads = len(unique_workloads)
+
+    scores = [0 for i in range(num_unique_workloads)]
+    for i in range(np_s_matrix_binned.shape[0]):
+        # Convert current matrix to decile bins
+        bins = np.percentile(np_s_matrix_binned[i], [10 * (j+1) for j in range(10)])
+        curr_met_matrix = np.digitize(np_s_matrix_binned[i], bins)
+
+        # Convert the input workload to the format of the S matrix
+        workload_s_row = workload_to_s_row(input_workload, i)
+
+        # Calculate euclidean distance from input workload to each given workload (for current metric)
+        for wl_idx in range(num_unique_workloads):
+            scores[wl_idx] += np.linalg.norm(curr_met_matrix[wl_idx]-workload_s_row)
+
+    return np.argmax(np.array(scores))
 
 
 def main():
@@ -117,11 +159,11 @@ def main():
     train_s = create_s_matrix(train)
     val_s = create_s_matrix(val)
 
-
-
-
-
-
+    # Compute workload mapping
+    # Example of function usage, need to create actual pipeline
+    input_workload = train.get_dataframe().values[0]
+    workload_mapping(input_workload, val_s, val)
+    workload_mapping(input_workload, train_s, train)
 
 
 if __name__ == "__main__":
