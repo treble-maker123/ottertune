@@ -24,7 +24,7 @@ def build_config() -> Namespace:
 
     parser.add_argument('--dataset', type=str, default='offline_workload',
                         help='The dataset to use, one of "offline_workload", '
-                             '"online_worload_B", "online_workload_C", or '
+                             '"online_workload_B", "online_workload_C", or '
                              '"test"')
     parser.add_argument('--output-path', type=str,
                         default='outputs/pruned_metrics.txt',
