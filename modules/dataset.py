@@ -65,7 +65,8 @@ class Dataset:
         """
         return self.get_dataframe().iloc[indices].reset_index(drop=True)
 
-    def get_column_values(self, col_header: str) -> List[Union[str, int, float]]:
+    def get_column_values(self, col_header: str) \
+            -> List[Union[str, int, float]]:
         """
         Returns all of the values of the given column as a list of strings.
         """
@@ -75,7 +76,7 @@ class Dataset:
         """
         Returns a pandas dataframe that contains the specified data file.
         """
-        return self._dataframe
+        return self._dataframe.copy(deep=True)
 
     def get_headers(self) -> List[str]:
         """
@@ -105,6 +106,12 @@ class Dataset:
         all_headers = self.get_headers()
         return [h for h in all_headers if h not in non_metric_headers]
 
+    def get_workload_ids(self) -> List[str]:
+        """
+        Returns a list of unique workload IDs in the dataframe.
+        """
+        return self._dataframe['workload id'].unique().tolist()
+
     def get_metrics(self) -> np.ndarray:
         """
         Returns the metrics in a numpy array. Note that this method discards
@@ -113,9 +120,27 @@ class Dataset:
         Returns:
             An array of dimension [NUM_WORKLOADS * NUM_METRICS].
         """
-        dataframe = self.get_dataframe().copy(deep=True)
+        dataframe = self.get_dataframe()
         dataframe.drop(self.get_non_metric_headers(), axis=1, inplace=True)
         return dataframe.values.astype(float)
+
+    def prune_columns(self, columns: List[str]) -> pd.DataFrame:
+        """
+        Returned a copy with the dataframe with only the specified columns.
+        """
+        dataframe = self.get_dataframe()
+        return Dataset(dataframe=dataframe[columns])
+
+    @classmethod
+    def load_pruned_metrics(cls) -> List[str]:
+        """
+        Returns the list of pruned metrics from "outputs/pruned_metrics.txt".
+        Raises an error if the file does not exist.
+        """
+        with open('outputs/pruned_metrics.txt', 'r') as f:
+            metrics = f.readlines()
+
+        return [m.replace('\n', '') for m in metrics]
 
     @classmethod
     def bin_metrics(cls, metrics: np.ndarray,

@@ -47,7 +47,6 @@ def main():
     """
     dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
     metrics = dataset.get_metrics()
-    #  metrics = Dataset.bin_metrics(metrics)  # output: num_config * num_metrics
     metrics = metrics.T  # output: num_metrics * num_config
 
     # factor analysis
@@ -80,8 +79,6 @@ def main():
         # find the index of the minimum-distance point to the center
         closest_member = cluster_member_idx[np.argmin(cluster_members[:, i])]
         leftover_metrics.append(metric_headers[closest_member])
-
-    # TODO: check the indices correspond to the correct columns
 
     # latency needs to be in the metrics
     if 'latency' not in leftover_metrics:
