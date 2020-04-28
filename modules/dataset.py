@@ -92,15 +92,14 @@ class Dataset:
 
     def get_non_metric_headers(self) -> List[str]:
         """
-        Returns a list of headers that include the knobs, 'workload id', and
-        'latency'.
+        Returns a list of headers that include the knobs and 'workload id'.
         """
-        return self.get_tuning_knob_headers() + ['workload id', 'latency']
+        return self.get_tuning_knob_headers() + ['workload id']
 
     def get_metric_headers(self) -> List[str]:
         """
-        Returns a list of headers that exclude 'workdload id', the tuning
-        knobs, as well as 'latency'.
+        Returns a list of headers that exclude 'workdload id' and the tuning
+        knobs.
         """
         non_metric_headers = self.get_non_metric_headers()
         all_headers = self.get_headers()
@@ -109,8 +108,7 @@ class Dataset:
     def get_metrics(self) -> np.ndarray:
         """
         Returns the metrics in a numpy array. Note that this method discards
-        the columns 'workload id', 'k1' to 'k8', 's1' to 's4', as well as the
-        'latency' column.
+        the columns 'workload id', 'k1' to 'k8', and 's1' to 's4'.
 
         Returns:
             An array of dimension [NUM_WORKLOADS * NUM_METRICS].
@@ -139,7 +137,7 @@ class Dataset:
         """
         # i.e. [10, 20, ..., 100] for num_bins = 10
         percentiles = np.arange(0, 101, 100 / num_bins)[1:].astype(int)
-        bin_values = percentiles.astype(float) / 100.0
+        bin_values = percentiles / 10
 
         # NOTE: axis=0 to get percentiles across the column row
         metrics_pct = np.percentile(metrics, percentiles, axis=axis)
@@ -151,7 +149,7 @@ class Dataset:
             ith_pct_values = metrics_pct[i][np.newaxis, :]
             binned_metrics[metrics <= ith_pct_values] = bin_values[i]
 
-        assert binned_metrics.max() <= 1.0, f"Max is {binned_metrics.max()}"
+        #  assert binned_metrics.max() <= 1.0, f"Max is {binned_metrics.max()}"
         assert binned_metrics.min() > 0, f"Min is {binned_metrics.min()}"
 
         return binned_metrics

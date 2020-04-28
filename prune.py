@@ -30,7 +30,6 @@ def build_config() -> Namespace:
                         default='outputs/pruned_metrics.txt',
                         help='The output path and file name of this script.')
 
-    # https://github.com/cmu-db/ottertune/blob/d47b09b0c096312e26336fd38d4c76ccc02adda3/server/website/website/tasks/periodic_tasks.py#L297
     parser.add_argument('--num-factors', type=int, default=5,
                         help='The number of factors to reduce the metrics.')
     # paper picks one between 0 and 20, we will use 10 per project requirement
@@ -48,7 +47,7 @@ def main():
     """
     dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
     metrics = dataset.get_metrics()
-    metrics = Dataset.bin_metrics(metrics)  # output: num_config * num_metrics
+    #  metrics = Dataset.bin_metrics(metrics)  # output: num_config * num_metrics
     metrics = metrics.T  # output: num_metrics * num_config
 
     # factor analysis
@@ -76,13 +75,17 @@ def main():
     leftover_metrics = []
     for i in np.unique(labels):
         # index of the points for the ith cluster
-        cluster_member_idx = np.argwhere(labels == i).squeeze()
+        cluster_member_idx = np.argwhere(labels == i).squeeze(1)
         cluster_members = transformed_data[cluster_member_idx]
         # find the index of the minimum-distance point to the center
         closest_member = cluster_member_idx[np.argmin(cluster_members[:, i])]
         leftover_metrics.append(metric_headers[closest_member])
 
     # TODO: check the indices correspond to the correct columns
+
+    # latency needs to be in the metrics
+    if 'latency' not in leftover_metrics:
+        leftover_metrics += ['latency']
 
     with open(CONFIG.output_path, 'w') as file:
         file.writelines('\n'.join(leftover_metrics))
