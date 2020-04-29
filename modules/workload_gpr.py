@@ -8,6 +8,7 @@ import os
 import pickle
 
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF
 from tqdm import tqdm
 
 from modules.dataset import Dataset
@@ -78,7 +79,8 @@ class WorkloadGPR:
                     y = workloads[m].values
                     m_file_name = m.replace('_', '-')
                     # by default Gaussian kernel is used
-                    model = GaussianProcessRegressor()
+                    model = GaussianProcessRegressor(kernel=RBF(),
+                                                     normalize_y=True)
                     model.fit(X, y)
                     self.models[f"wl_{w}_{m_file_name}.pickle"] = model
                     pbar.update(1)
