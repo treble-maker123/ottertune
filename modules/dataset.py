@@ -124,12 +124,32 @@ class Dataset:
         dataframe.drop(self.get_non_metric_headers(), axis=1, inplace=True)
         return dataframe.values.astype(float)
 
+    def get_tuning_knobs(self) -> List[float]:
+        """
+        Returns the knobs in a numpy array.
+
+        Returns:
+            An array of dimension [NUM_KNOBS].
+        """
+        dataframe = self.get_dataframe()[self.get_tuning_knob_headers()]
+        return dataframe.values.astype(float)
+
     def prune_columns(self, columns: List[str]) -> pd.DataFrame:
         """
         Returned a copy with the dataframe with only the specified columns.
         """
         dataframe = self.get_dataframe()
         return Dataset(dataframe=dataframe[columns])
+
+    def get_specific_workload(self, wl_id: str) -> pd.DataFrame:
+        """
+        Returned a copy with the dataframe with only the specified columns.
+        """
+        dataframe = self.get_dataframe()
+        return Dataset(dataframe=dataframe[dataframe['workload id'] == wl_id])
+
+    # def get_workload_metric(wl_id: str, metric: str):
+
 
     @classmethod
     def load_pruned_metrics(cls) -> List[str]:
