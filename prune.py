@@ -11,6 +11,7 @@ from time import time
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 from modules.dataset import Dataset, DATASET_PATHS
 from modules.logger import build_logger
@@ -33,8 +34,9 @@ def build_config() -> Namespace:
     parser.add_argument('--num-factors', type=int, default=5,
                         help='The number of factors to reduce the metrics.')
     # paper picks one between 0 and 20, we will use 10 per project requirement
-    parser.add_argument('--num-clusters', type=int, default=10,
-                        help='The number of clusters to generate for K-means.')
+    parser.add_argument('--max-clusters', type=int, default=10,
+                        help='The maximum number of clusters to generate for '
+                             'K-means.')
 
     known_args, _ = parser.parse_known_args()
 
@@ -59,11 +61,22 @@ def main():
     LOG.info('Finished factor analysis in %s seconds.', round(time()-start))
 
     # k-means clustering
-    LOG.info('Starting K-means with %s clusters...', CONFIG.num_clusters)
-    start = time()
-    model = KMeans(n_clusters=CONFIG.num_clusters, n_init=50, max_iter=500)
-    model = model.fit(factors)
-    LOG.info('Finished K-means clustering in %s seconds.', round(time()-start))
+    best_model, best_score = None, float('-inf')
+    for i in range(1, CONFIG.max_clusters):
+        k = i + 1
+        LOG.debug('Starting K-means with %s clusters...', k)
+        start = time()
+        model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
+        #  set_trace()
+        score = silhouette_score(factors, model.labels_)
+        LOG.info('Finished K-means with %s clusters in %s seconds, score: %s',
+                 k, round(time()-start), score)
+        if score > best_score:
+            best_model = model
+            best_score = score
+            LOG.debug('Better score! Saving model with k=%s.', score)
+
+    model, score = best_model, best_score
 
     # find cluster center
     labels = model.labels_
@@ -84,8 +97,8 @@ def main():
     if 'latency' not in leftover_metrics:
         leftover_metrics += ['latency']
 
-    with open(CONFIG.output_path, 'w') as file:
-        file.writelines('\n'.join(leftover_metrics))
+    #  with open(CONFIG.output_path, 'w') as file:
+        #  file.writelines('\n'.join(leftover_metrics))
 
 
 if __name__ == "__main__":
