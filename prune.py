@@ -48,8 +48,8 @@ def main():
     Main method for the script.
     """
     dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
-    metrics = dataset.get_metrics()
-    metrics = metrics.T  # output: num_metrics * num_config
+    raw_metrics = dataset.get_metrics()
+    metrics = raw_metrics.T  # output: num_metrics * num_config
 
     # factor analysis
     LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
@@ -67,7 +67,6 @@ def main():
         LOG.debug('Starting K-means with %s clusters...', k)
         start = time()
         model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
-        #  set_trace()
         score = silhouette_score(factors, model.labels_)
         LOG.info('Finished K-means with %s clusters in %s seconds, score: %s',
                  k, round(time()-start), score)
@@ -97,8 +96,8 @@ def main():
     if 'latency' not in leftover_metrics:
         leftover_metrics += ['latency']
 
-    #  with open(CONFIG.output_path, 'w') as file:
-        #  file.writelines('\n'.join(leftover_metrics))
+    with open(CONFIG.output_path, 'w') as file:
+        file.writelines('\n'.join(leftover_metrics))
 
 
 if __name__ == "__main__":
