@@ -115,8 +115,8 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
         ['workload id'] + observed_data.get_tuning_knob_headers()+['latency']).get_specific_workload(closest_wl).get_dataframe()
     target_data = primer_data.prune_columns(
         ['workload id'] + primer_data.get_tuning_knob_headers()+['latency']).get_specific_workload(target_wl).get_dataframe()
-    # concat_data = pd.concat([closest_data, target_data], ignore_index=True).values
-    concat_data = target_data.values
+    concat_data = pd.concat([closest_data, target_data], ignore_index=True).values
+    # concat_data = target_data.values
     X, y = remove_duplicate_knobs(concat_data[:, 1:-1], concat_data[:, -1])
 
     alpha = np.array([7e8 for i in range(X.shape[0]-5)] + [1e1 for i in range(5)])
