@@ -128,7 +128,8 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
         ['workload id'] + observed_data.get_tuning_knob_headers()+['latency']).get_specific_workload(closest_wl).get_dataframe()
     target_data = primer_data.prune_columns(
         ['workload id'] + primer_data.get_tuning_knob_headers()+['latency']).get_specific_workload(target_wl).get_dataframe()
-    concat_data = pd.concat([closest_data, target_data], ignore_index=True).values
+    concat_data = pd.concat([closest_data, target_data],
+                            ignore_index=True).values
     # concat_data = target_data.values
     X, y = remove_duplicate_knobs(concat_data[:, 1:-1], concat_data[:, -1])
 
@@ -137,7 +138,7 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
     kernel = ConstantKernel(
         0.01, (0.01, 0.5)) * (DotProduct(sigma_0=2.0, sigma_0_bounds=(0.01, 30.0)) ** 2)
     model = GaussianProcessRegressor(
-        kernel=kernel, normalize_y=True, alpha=alpha, n_restarts_optimizer=15)
+        kernel=kernel, normalize_y=True, alpha=alpha, n_restarts_optimizer=5)
 
     ss_x = StandardScaler()
     ss_y = StandardScaler()

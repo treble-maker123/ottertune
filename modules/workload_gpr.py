@@ -6,10 +6,9 @@ from typing import Dict
 from pdb import set_trace
 import os
 import pickle
-import math
 
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, DotProduct, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from tqdm import tqdm
 
 from modules.dataset import Dataset
@@ -19,14 +18,18 @@ LOG = build_logger()
 
 
 class WorkloadGPR:
-    def __init__(self, dataset: Dataset = None):
+    """
+    Trains a set of GPRs for workload matching
+    """
+
+    def __init__(self, dataset: Dataset = None, scaler=None):
         # { 'workload-id_metric-ident': GaussianProcessRegressor }
         self.models: Dict[str, GaussianProcessRegressor] = {}
 
         if dataset is not None:
             # train new GPRs
             LOG.info("Building GPRs from dataset.")
-            self._build_models_from_dataset(dataset)
+            self._build_models_from_dataset(dataset, scaler)
         else:
             # load the models from the ./models directory
             models_fnames = os.listdir('./models')
@@ -62,7 +65,7 @@ class WorkloadGPR:
             with open(f"./models/{name}", 'wb') as f:
                 pickle.dump(model, f)
 
-    def _build_models_from_dataset(self, dataset: Dataset):
+    def _build_models_from_dataset(self, dataset: Dataset, scaler=None):
         """
         Build all of the GPR models from scratch
         """
@@ -77,13 +80,19 @@ class WorkloadGPR:
                 workloads = df[df['workload id'] == w]
                 for m in metrics:
                     X = workloads[knob_headers].values
+
+                    if scaler is not None:
+                        X = scaler.transform(X)
+
                     y = workloads[m].values
                     m_file_name = m.replace('_', '-')
 
                     # krasserm.github.io/2018/03/19/gaussian-processes#effect-of-kernel-parameters-and-noise-parameter
-                    restarts = 2
-                    kernel = ConstantKernel(y.std()) * RBF(y.std())
-                    alpha = y.mean() / 10.0  # sigma_y, high variance from mean
+                    restarts = 5
+                    # sigma_f, l
+                    kernel = ConstantKernel(10.0) * RBF(y.std())
+                    # sigma_y
+                    alpha = 0.1
                     model = GaussianProcessRegressor(kernel=kernel,
                                                      n_restarts_optimizer=restarts,
                                                      alpha=alpha,

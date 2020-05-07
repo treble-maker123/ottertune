@@ -6,6 +6,7 @@ from pdb import set_trace
 
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import StandardScaler
 
 from modules.logger import build_logger
 from modules.workload_gpr import WorkloadGPR
@@ -25,7 +26,7 @@ def main():
     df = pruned_dataset.get_dataframe()
 
     # pick the ith data to use as validation
-    i = [1, 3, 5]
+    i = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]
     workload_ids = pruned_dataset.get_workload_ids()
     validation_df = pd.concat([df[df['workload id'] == wid].iloc[i]
                                for wid in workload_ids])
@@ -37,8 +38,13 @@ def main():
     train_df = df.iloc[diff_idx]
     train_dataset = Dataset(dataframe=train_df)
 
+    #  LOG.info("Fitting input scaler...")
+    #  scaler = StandardScaler()
+    #  scaler.fit(train_df[dataset.get_tuning_knob_headers()].values)
+    scaler = None
+
     LOG.info("Training workload GPRs...")
-    gprs = WorkloadGPR(dataset=train_dataset)
+    gprs = WorkloadGPR(dataset=train_dataset, scaler=scaler)
 
     LOG.info("Validating GPRs...")
     train = {}
@@ -49,22 +55,26 @@ def main():
             model = gprs.get_model(wid, pm)
 
             # train
-            X = train_df[dataset.get_tuning_knob_headers()].values
-            y = train_df[pm].values
-            y_hat = model.predict(X)
-            mape = np.mean(np.abs((y - y_hat) / y)) * 100
-            train[name] = mape
+            #  X = train_df[dataset.get_tuning_knob_headers()].values
+            #  X = scaler.transform(X)
+            #  y = train_df[pm].values
+            #  y_hat = model.predict(X)
+            #  mape = np.mean(np.abs((y - y_hat) / y)) * 100
+            #  train[name] = mape
 
             # validation
             X = validation_df[dataset.get_tuning_knob_headers()].values
+            if scaler is not None:
+                X = scaler.transform(X)
+
             y = validation_df[pm].values
             y_hat = model.predict(X)
             mape = np.mean(np.abs((y - y_hat) / y)) * 100
             result[name] = mape
             #  LOG.info('%s: %s', name, mape)
 
-    LOG.info('Training average MAPE: %s',
-             np.array(list(train.values())).mean())
+    #  LOG.info('Training average MAPE: %s',
+            #  np.array(list(train.values())).mean())
     LOG.info('Validation average MAPE: %s',
              np.array(list(result.values())).mean())
 
