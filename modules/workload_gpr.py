@@ -6,9 +6,10 @@ from typing import Dict
 from pdb import set_trace
 import os
 import pickle
+import math
 
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, DotProduct, WhiteKernel
 from tqdm import tqdm
 
 from modules.dataset import Dataset
@@ -78,8 +79,14 @@ class WorkloadGPR:
                     X = workloads[knob_headers].values
                     y = workloads[m].values
                     m_file_name = m.replace('_', '-')
-                    # by default Gaussian kernel is used
-                    model = GaussianProcessRegressor(kernel=RBF(),
+
+                    # krasserm.github.io/2018/03/19/gaussian-processes#effect-of-kernel-parameters-and-noise-parameter
+                    restarts = 2
+                    kernel = ConstantKernel(y.std()) * RBF(y.std())
+                    alpha = y.mean() / 10.0  # sigma_y, high variance from mean
+                    model = GaussianProcessRegressor(kernel=kernel,
+                                                     n_restarts_optimizer=restarts,
+                                                     alpha=alpha,
                                                      normalize_y=True)
                     model.fit(X, y)
                     self.models[f"wl_{w}_{m_file_name}.pickle"] = model

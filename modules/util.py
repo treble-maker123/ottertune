@@ -13,3 +13,14 @@ def clear_temp_models():
 
     for f in files:
         os.remove(f'{temp_dir}/{f}')
+
+
+def clear_wl_models():
+    '''
+    This function clears all of the workload GPR models in models/.
+    '''
+    dir = './models'
+    files = [f for f in os.listdir(dir) if f[:2] == 'wl']
+
+    for f in files:
+        os.remove(f'{dir}/{f}')
