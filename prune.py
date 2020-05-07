@@ -37,6 +37,13 @@ def build_config() -> Namespace:
     parser.add_argument('--max-clusters', type=int, default=10,
                         help='The maximum number of clusters to generate for '
                              'K-means.')
+    parser.add_argument('--use-k', dest='use_k', action='store_true',
+                        default=False,
+                        help='Whether to use a specific k for clustering, if '
+                             ' so, num-clusters argument will be used.')
+    parser.add_argument('--k', type=int, default=10,
+                        help='Number of clusters to use, only when use-k '
+                             ' is true.')
 
     known_args, _ = parser.parse_known_args()
 
@@ -61,21 +68,27 @@ def main():
     LOG.info('Finished factor analysis in %s seconds.', round(time()-start))
 
     # k-means clustering
-    best_model, best_score = None, float('-inf')
-    for i in range(1, CONFIG.max_clusters):
-        k = i + 1
-        LOG.debug('Starting K-means with %s clusters...', k)
-        start = time()
+    if CONFIG.use_k:
+        k = CONFIG.k
+        LOG.debug('Running K-means with k=%s clusters...', k)
         model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
-        score = silhouette_score(factors, model.labels_)
-        LOG.info('Finished K-means with %s clusters in %s seconds, score: %s',
-                 k, round(time()-start), score)
-        if score > best_score:
-            best_model = model
-            best_score = score
-            LOG.debug('Better score! Saving model with k=%s.', score)
+    else:
+        best_model, best_score = None, float('-inf')
 
-    model, score = best_model, best_score
+        for i in range(1, CONFIG.max_clusters):
+            k = i + 1
+            LOG.debug('Starting K-means with %s clusters...', k)
+            start = time()
+            model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
+            score = silhouette_score(factors, model.labels_)
+            LOG.info('Finished K-means with %s clusters in %s seconds, score: %s',
+                     k, round(time()-start), score)
+            if score > best_score:
+                best_model = model
+                best_score = score
+                LOG.debug('Better score! Saving model with k=%s.', score)
+
+        model = best_model
 
     # find cluster center
     labels = model.labels_
