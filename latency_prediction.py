@@ -13,9 +13,11 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, minmax_scale
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF
+from sklearn.gaussian_process.kernels import RBF, Matern, RationalQuadratic,\
+                                              ExpSineSquared, DotProduct,\
+                                              ConstantKernel
 from sklearn.metrics import r2_score, mean_squared_error
 
 from modules.dataset import Dataset, DATASET_PATHS
@@ -25,6 +27,8 @@ from typing import List, Union, Tuple, Dict
 from tqdm import tqdm
 
 from os import path
+
+use_scaling = True
 
 def build_config() -> Namespace:
     """
@@ -111,15 +115,20 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
         ['workload id'] + observed_data.get_tuning_knob_headers()+['latency']).get_specific_workload(closest_wl).get_dataframe()
     target_data = primer_data.prune_columns(
         ['workload id'] + primer_data.get_tuning_knob_headers()+['latency']).get_specific_workload(target_wl).get_dataframe()
-    concat_data = pd.concat([closest_data, target_data], ignore_index=True).values
+    # concat_data = pd.concat([closest_data, target_data], ignore_index=True).values
+    concat_data = target_data.values
     X, y = remove_duplicate_knobs(concat_data[:, 1:-1], concat_data[:, -1])
-    # alpha = np.array([1e-5 for i in range(X.shape[0]-5)] + [1e-5 for i in range(5)])
-    # model = GaussianProcessRegressor(kernel=RBF())
-    model = GaussianProcessRegressor(RBF())
+
+    alpha = np.array([7e8 for i in range(X.shape[0]-5)] + [1e1 for i in range(5)])
+    kernel = ConstantKernel(0.01, (0.01, 0.5)) * (DotProduct(sigma_0=2.0, sigma_0_bounds=(0.01, 30.0)) ** 2)
+    model = GaussianProcessRegressor(kernel=kernel, normalize_y=True, alpha=alpha, n_restarts_optimizer=15)
+
     ss_x = StandardScaler()
     ss_y = StandardScaler()
-    # X = ss_x.fit_transform(X)
-    # y = ss_y.fit_transform(np.expand_dims(y,1))
+
+    if use_scaling:
+        X = ss_x.fit_transform(X)
+        # y = ss_y.fit_transform(np.expand_dims(y,1))
     model.fit(X, y)
     return model, ss_x, ss_y
 
@@ -127,19 +136,20 @@ def eval_model(target_wl, model, eval_data, ss_x, ss_y):
     eval_X = eval_data.prune_columns(
         ['workload id'] + eval_data.get_tuning_knob_headers()).get_specific_workload(target_wl).get_dataframe()
     eval_X = eval_X.values[:,1:13]
-    # eval_X = ss_x.transform(eval_X)
+    if use_scaling:
+        eval_X = ss_x.transform(eval_X)
     result = model.predict(eval_X)[0]
-    # result = ss_y.inverse_transform([[result]])[0][0][0]
+    # if use_scaling:
+    #     result = ss_y.inverse_transform([[result]])[0][0][0]
     return result
 
-
-def split_online_b(online_b_data):
+def split_online_b(online_b_data, test_idx):
     primer = pd.DataFrame(columns=online_b_data.get_dataframe().columns)
     eval = pd.DataFrame(columns=online_b_data.get_dataframe().columns)
     for wl_id in online_b_data.get_workload_ids():
         curr_ds = online_b_data.get_specific_workload(wl_id)
         for idx in range(curr_ds.get_dataframe().values.shape[0]):
-            if idx == 0:
+            if idx == test_idx:
                 eval = eval.append(curr_ds.get_dataframe().iloc[idx:idx+1], ignore_index=True)
             else:
                 primer = primer.append(curr_ds.get_dataframe().iloc[idx:idx+1], ignore_index=True)
@@ -154,7 +164,30 @@ def main():
     """
     Main method for the script.
     """
+    def mean_absolute_percentage_error(gt_y, pred_y):
+        return 100*np.mean(np.abs(np.divide(np.array(gt_y)-np.array(pred_y), np.array(gt_y))))
+
     def run_on_b_data():
+        all_mapes = []
+        num_folds = online_b_data.get_specific_workload(online_b_data.get_workload_ids()[0]).get_dataframe().values.shape[0]
+        for fold_num in range(num_folds):
+            b_primer, b_test, b_gt = split_online_b(online_b_data, fold_num)
+            b_pred = []
+            for curr_wl in tqdm(b_test.get_workload_ids()):
+                S = make_s_matrix(curr_wl, offline_data, b_primer, 'outputs/b_s_matrix_{}.npy'.format(fold_num))
+                closest_observed_wl = find_closest_observed_wl(curr_wl, offline_data, b_primer, S)
+                model, ss_x, ss_y = train_concat_model(curr_wl, offline_data, b_primer, closest_observed_wl)
+                # b_pred.append(max(eval_model(curr_wl, model, b_test, ss_x, ss_y), 0))
+                b_pred.append(eval_model(curr_wl, model, b_test, ss_x, ss_y))
+            print('Fold {}:\tMAPE = {:.2f}'.format(fold_num+1, mean_absolute_percentage_error(b_gt, b_pred)))
+            all_mapes.append(mean_absolute_percentage_error(b_gt, b_pred))
+            both_arrays = np.array([b_gt, b_pred]).T
+            np.savetxt("outputs/y_and_y_hat.csv", both_arrays, delimiter=",")
+        print()
+        print('MAPE:\t{:.2f}'.format(sum(all_mapes) / len(all_mapes)))
+        # best: 26.10
+
+    def og_run_on_b_data():
         b_primer, b_test, b_gt = split_online_b(online_b_data)
         b_pred = []
         for curr_wl in tqdm(b_test.get_workload_ids()):
@@ -162,8 +195,11 @@ def main():
             closest_observed_wl = find_closest_observed_wl(curr_wl, offline_data, b_primer, S)
             model, ss_x, ss_y = train_concat_model(curr_wl, offline_data, b_primer, closest_observed_wl)
             b_pred.append(eval_model(curr_wl, model, b_test, ss_x, ss_y))
-        print('r2:\t', r2_score(b_gt, b_pred))
-        print('mse:\t', mean_squared_error(b_gt, b_pred))
+        # print('mse:\t', mean_squared_error(b_gt, b_pred))
+        print('r2:\t{:.2f}'.format(r2_score(b_gt, b_pred)))
+        print('MAPE:\t{:.2f}'.format(mean_absolute_percentage_error(b_gt, b_pred)))
+        both_arrays = np.array([b_gt, b_pred]).T
+        np.savetxt("outputs/y_and_y_hat.csv", both_arrays, delimiter=",")
 
     def run_on_test_data():
         for curr_wl in tqdm(test_data.get_workload_ids()):

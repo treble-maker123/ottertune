@@ -8,13 +8,10 @@ def main():
     path = 'outputs/y_and_y_hat.csv'
 
     with open(path, 'r') as f:
-        y, y_hat = f.readlines()
+        all_data = [t.strip().split(',') for t in f.readlines()]
 
-    y = y.replace('\n', '')
-    y_hat = y_hat.replace('\n', '')
-
-    y = np.array(y.split(',')).astype(float)
-    y_hat = np.array(y_hat.split(',')).astype(float)
+    y = np.array([i[0] for i in all_data]).astype(float)
+    y_hat = np.array([i[1] for i in all_data]).astype(float)
 
     line = np.arange(np.concatenate([y, y_hat]).max())
 
@@ -22,7 +19,8 @@ def main():
     plt.ylabel('Y Hat')
     plt.scatter(y, y_hat)
     plt.plot(line, line)
-    plt.show()
+    # plt.show()
+    plt.savefig('outputs/y_and_y_hat.png')
 
 
 if __name__ == '__main__':
