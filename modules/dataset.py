@@ -121,6 +121,7 @@ class Dataset:
             An array of dimension [NUM_WORKLOADS * NUM_METRICS].
         """
         dataframe = self.get_dataframe()
+        # drop nonmetric headers
         dataframe.drop(self.get_non_metric_headers(), axis=1, inplace=True)
         return dataframe.values.astype(float)
 
@@ -149,7 +150,6 @@ class Dataset:
         return Dataset(dataframe=dataframe[dataframe['workload id'] == wl_id])
 
     # def get_workload_metric(wl_id: str, metric: str):
-
 
     @classmethod
     def load_pruned_metrics(cls) -> List[str]:

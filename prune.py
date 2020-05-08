@@ -127,8 +127,22 @@ def main():
     Main method for the script.
     """
     dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
+    df = dataset.get_dataframe()
+
+    # remove columns that are constant values
+    metric_headers = dataset.get_metric_headers()
+    constant_headers = []
+    variable_headers = []
+    for header in metric_headers:
+        if np.unique(df[header].values).size > 1:
+            variable_headers.append(header)
+        else:
+            constant_headers.append(header)
+
+    metric_headers = variable_headers
+    dataset = Dataset(dataframe=df.drop(constant_headers, axis=1))
     raw_metrics = dataset.get_metrics()
-    metrics = raw_metrics.T  # output: num_metrics * num_config
+    metrics = raw_metrics.T
 
     # factor analysis
     LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
@@ -152,7 +166,6 @@ def main():
     # each dimension in transformed_data is the distance to the cluster
     # centers.
     transformed_data = model.transform(factors)
-    metric_headers = dataset.get_metric_headers()
     leftover_metrics = []
     for i in np.unique(labels):
         # index of the points for the ith cluster
