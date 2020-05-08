@@ -12,6 +12,7 @@ import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from sklearn_extra.cluster import KMedoids
 
 from modules.dataset import Dataset, DATASET_PATHS
 from modules.logger import build_logger
@@ -27,6 +28,8 @@ def build_config() -> Namespace:
                         help='The dataset to use, one of "offline_workload", '
                              '"online_workload_B", "online_workload_C", or '
                              '"test"')
+    parser.add_argument('--model', type=str, default='kmeans',
+                        help='Which model to run, either "kmeans" or "kmedoid"')
     parser.add_argument('--output-path', type=str,
                         default='outputs/pruned_metrics.txt',
                         help='The output path and file name of this script.')
@@ -50,24 +53,10 @@ def build_config() -> Namespace:
     return known_args
 
 
-def main():
+def build_k_means(factors: np.ndarray) -> KMeans:
     """
-    Main method for the script.
+    Builds a KMeans model from the given factors.
     """
-    dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
-    raw_metrics = dataset.get_metrics()
-    metrics = raw_metrics.T  # output: num_metrics * num_config
-
-    # factor analysis
-    LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
-    start = time()
-    model = FactorAnalysis(n_components=CONFIG.num_factors)
-    factors = model.fit_transform(metrics)  # num_metrics * num_factors
-    LOG.debug('Dimension before factor analysis: %s', metrics.shape)
-    LOG.debug('Dimension after factor analysis: %s', factors.shape)
-    LOG.info('Finished factor analysis in %s seconds.', round(time()-start))
-
-    # k-means clustering
     if CONFIG.use_k:
         k = CONFIG.k
         LOG.debug('Running K-means with k=%s clusters...', k)
@@ -89,6 +78,63 @@ def main():
                 LOG.debug('Better score! Saving model with k=%s.', score)
 
         model = best_model
+
+    return model
+
+
+def build_k_medoids(factors: np.ndarray):
+    """
+    Builds a KMedoids model from the given factors
+    """
+    if CONFIG.use_k:
+        k = CONFIG.k
+        LOG.debug('Running K-Medoids with k=%s clusters...', k)
+        model = KMedoids(n_clusters=k, max_iter=500).fit(factors)
+    else:
+        best_model, best_score = None, float('inf')
+
+        for i in range(1, CONFIG.max_clusters):
+            k = i + 1
+            LOG.debug('Starting K-medoids with %s clusters...', k)
+            start = time()
+            model = KMedoids(n_clusters=k, max_iter=500).fit(factors)
+            score = silhouette_score(factors, model.labels_)
+            LOG.info('Finished K-medoids with %s clusters in %s seconds, score: %s',
+                     k, round(time()-start), score)
+            if score > best_score:
+                best_model = model
+                best_score = score
+                LOG.debug('Better score! Saving model with k=%s.', score)
+
+        model = best_model
+
+    return model
+
+
+def main():
+    """
+    Main method for the script.
+    """
+    dataset = Dataset(file_path=DATASET_PATHS[CONFIG.dataset])
+    raw_metrics = dataset.get_metrics()
+    metrics = raw_metrics.T  # output: num_metrics * num_config
+
+    # factor analysis
+    LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
+    start = time()
+    model = FactorAnalysis(n_components=CONFIG.num_factors)
+    factors = model.fit_transform(metrics)  # num_metrics * num_factors
+    LOG.debug('Dimension before factor analysis: %s', metrics.shape)
+    LOG.debug('Dimension after factor analysis: %s', factors.shape)
+    LOG.info('Finished factor analysis in %s seconds.', round(time()-start))
+
+    # clustering
+    if CONFIG.model == 'kmeans':
+        model = build_k_means(factors)
+    elif CONFIG.model == 'kmedoids':
+        model = build_k_medoids(factors)
+    else:
+        raise ValueError('Unrecognized model: %s', CONFIG.model)
 
     # find cluster center
     labels = model.labels_

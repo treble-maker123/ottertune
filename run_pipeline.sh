@@ -12,11 +12,16 @@ rm outputs/y_and_y_hat.csv
 echo "Removing previous workload models"
 rm models/wl_*
 
+# export prune="python3 prune.py \
+# --output-path=outputs/pruned_metrics.txt \
+# --num-factors=5 \
+# --model=kmedoids  \
+# --use-k \
+# --k=10"
+
 export prune="python3 prune.py \
 --output-path=outputs/pruned_metrics.txt \
---num-factors=5" # \
-#--use-k \
-#--k=10"
+--num-factors=5"
 
 export workload="python3 train_workload_gprs.py"
 
