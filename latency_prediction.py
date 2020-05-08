@@ -28,8 +28,6 @@ from tqdm import tqdm
 
 from os import path
 
-from natsort import natsorted
-
 use_scaling = True
 
 
@@ -209,8 +207,7 @@ def main():
                     curr_wl, offline_data, b_primer, S)
                 model, ss_x, ss_y = train_concat_model(
                     curr_wl, offline_data, b_primer, closest_observed_wl)
-                # b_pred.append(max(eval_model(curr_wl, model, b_test, ss_x, ss_y), 0))
-                b_pred.append(eval_model(curr_wl, model, b_test, ss_x, ss_y))
+                b_pred.append(max(eval_model(curr_wl, model, b_test, ss_x, ss_y), 0))
             print('Fold {}:\tMAPE = {:.2f}'.format(fold_num+1,
                                                    mean_absolute_percentage_error(b_gt, b_pred)))
             all_mapes.append(mean_absolute_percentage_error(b_gt, b_pred))
