@@ -146,7 +146,9 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
     ss_y = StandardScaler()
 
     if use_scaling:
+        binary_knobs = X[:,6]
         X = ss_x.fit_transform(X)
+        X[:,6] = binary_knobs
         # y = ss_y.fit_transform(np.expand_dims(y,1))
     model.fit(X, y)
     return model, ss_x, ss_y
@@ -157,7 +159,9 @@ def eval_model(target_wl, model, eval_data, ss_x, ss_y):
         ['workload id'] + eval_data.get_tuning_knob_headers()).get_specific_workload(target_wl).get_dataframe()
     eval_X = eval_X.values[:, 1:13]
     if use_scaling:
+        binary_knobs = eval_X[:,6]
         eval_X = ss_x.transform(eval_X)
+        eval_X[:,6] = binary_knobs
     result = model.predict(eval_X)[0]
     # if use_scaling:
     #     result = ss_y.inverse_transform([[result]])[0][0][0]
@@ -241,9 +245,9 @@ def main():
     online_c_data = Dataset(file_path=DATASET_PATHS['online_workload_C'])
     test_data = Dataset(file_path=DATASET_PATHS['test'])
 
-    # run_on_b_data()
+    run_on_b_data()
     # get_nearest_neighbors()
-    run_on_test_data()
+    # run_on_test_data()
 
 
 if __name__ == "__main__":
