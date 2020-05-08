@@ -28,6 +28,8 @@ from tqdm import tqdm
 
 from os import path
 
+from natsort import natsorted
+
 use_scaling = True
 
 
@@ -212,42 +214,36 @@ def main():
             np.savetxt("outputs/y_and_y_hat.csv", both_arrays, delimiter=",")
         print()
         print('MAPE:\t{:.2f}'.format(sum(all_mapes) / len(all_mapes)))
-        # best: 26.10
-
-    def og_run_on_b_data():
-        b_primer, b_test, b_gt = split_online_b(online_b_data)
-        b_pred = []
-        for curr_wl in tqdm(b_test.get_workload_ids()):
-            S = make_s_matrix(curr_wl, offline_data, b_primer,
-                              'outputs/b_s_matrix.npy')
-            closest_observed_wl = find_closest_observed_wl(
-                curr_wl, offline_data, b_primer, S)
-            model, ss_x, ss_y = train_concat_model(
-                curr_wl, offline_data, b_primer, closest_observed_wl)
-            b_pred.append(eval_model(curr_wl, model, b_test, ss_x, ss_y))
-        # print('mse:\t', mean_squared_error(b_gt, b_pred))
-        print('r2:\t{:.2f}'.format(r2_score(b_gt, b_pred)))
-        print('MAPE:\t{:.2f}'.format(
-            mean_absolute_percentage_error(b_gt, b_pred)))
-        both_arrays = np.array([b_gt, b_pred]).T
-        np.savetxt("outputs/y_and_y_hat.csv", both_arrays, delimiter=",")
 
     def run_on_test_data():
+        latencies = []
         for curr_wl in tqdm(test_data.get_workload_ids()):
-            S = make_s_matrix(curr_wl, offline_data, online_c_data)
+            S = make_s_matrix(curr_wl, offline_data, online_c_data, 'outputs/s_matrix_test.npy')
             closest_observed_wl = find_closest_observed_wl(
                 curr_wl, offline_data, online_c_data, S)
-            model, ss = train_concat_model(
-                curr_wl, offline_data, online_c_data, closest_observed_wl)
-            pred_latency = eval_model(curr_wl, model, test_data, ss)
+            model, ss_x, ss_y = train_concat_model(curr_wl, offline_data, online_c_data, closest_observed_wl)
+            latencies.append(eval_model(curr_wl, model, test_data, ss_x, ss_y))
+        output_test_data = test_data.get_dataframe()
+        output_test_data['latency prediction'] = latencies
+        output_test_data.to_csv('outputs/test_filled.csv', index=False)
+
+    def get_nearest_neighbors():
+        nearest_neighbors = []
+        for curr_wl in tqdm(natsorted(test_data.get_workload_ids())):
+            S = make_s_matrix(curr_wl, offline_data, online_c_data, 'outputs/s_matrix_test.npy')
+            closest_observed_wl = find_closest_observed_wl(
+                curr_wl, offline_data, online_c_data, S)
+            nearest_neighbors.append([curr_wl, closest_observed_wl])
+        np.savetxt('outputs/nearest_neigbors.csv', np.array(nearest_neighbors), delimiter=',', fmt='%s')
 
     offline_data = Dataset(file_path=DATASET_PATHS['offline_workload'])
     online_b_data = Dataset(file_path=DATASET_PATHS['online_workload_B'])
     online_c_data = Dataset(file_path=DATASET_PATHS['online_workload_C'])
     test_data = Dataset(file_path=DATASET_PATHS['test'])
 
-    run_on_b_data()
-    # run_on_test_data()
+    # run_on_b_data()
+    # get_nearest_neighbors()
+    run_on_test_data()
 
 
 if __name__ == "__main__":
