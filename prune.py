@@ -98,7 +98,7 @@ def build_k_medoids(factors: np.ndarray):
         LOG.debug('Running K-Medoids with k=%s clusters...', k)
         model = KMedoids(n_clusters=k, max_iter=500).fit(factors)
     else:
-        best_model, best_score = None, float('inf')
+        best_model, best_score = None, float('-inf')
         scores = []
 
         for i in range(1, CONFIG.max_clusters):

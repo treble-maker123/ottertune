@@ -46,7 +46,10 @@ class WorkloadGPR:
         """
         # converts the underscores in the metric name to dashes because that's
         # how it's saved.
-        metric_name = metric_name.replace('_', '-')
+        metric_name = metric_name \
+            .replace('_', '-') \
+            .replace('/', '-') \
+            .replace('%', '-')
         model_fname = f"wl_{workload_id}_{metric_name}.pickle"
 
         # lazy loading, load only if needed, since each file is close to 1MB
@@ -85,7 +88,10 @@ class WorkloadGPR:
                         X = scaler.transform(X)
 
                     y = workloads[m].values
-                    m_file_name = m.replace('_', '-')
+                    m_file_name = m \
+                        .replace('_', '-') \
+                        .replace('/', '-') \
+                        .replace('%', '-')
 
                     # krasserm.github.io/2018/03/19/gaussian-processes#effect-of-kernel-parameters-and-noise-parameter
                     restarts = 10
