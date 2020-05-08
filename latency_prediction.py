@@ -138,7 +138,7 @@ def train_concat_model(target_wl, observed_data, primer_data, closest_wl):
     kernel = ConstantKernel(
         0.01, (0.01, 0.5)) * (DotProduct(sigma_0=2.0, sigma_0_bounds=(0.01, 30.0)) ** 2)
     model = GaussianProcessRegressor(
-        kernel=kernel, normalize_y=True, alpha=alpha, n_restarts_optimizer=5)
+        kernel=kernel, normalize_y=True, alpha=alpha, n_restarts_optimizer=15)
 
     ss_x = StandardScaler()
     ss_y = StandardScaler()

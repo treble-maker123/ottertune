@@ -88,7 +88,7 @@ class WorkloadGPR:
                     m_file_name = m.replace('_', '-')
 
                     # krasserm.github.io/2018/03/19/gaussian-processes#effect-of-kernel-parameters-and-noise-parameter
-                    restarts = 5
+                    restarts = 10
                     # sigma_f, l
                     kernel = ConstantKernel(10.0) * RBF(y.std())
                     # sigma_y
