@@ -7,4 +7,6 @@ dependencies:
   - pandas
   - scikit-learn
   - tqdm
+  - matplotlib
+  - scikit-learn-extra
 
