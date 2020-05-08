@@ -8,6 +8,7 @@ from argparse import Namespace, ArgumentParser
 from pdb import set_trace
 from time import time
 
+import pandas as pd
 import numpy as np
 from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
@@ -63,6 +64,7 @@ def build_k_means(factors: np.ndarray) -> KMeans:
         model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
     else:
         best_model, best_score = None, float('-inf')
+        scores = []
 
         for i in range(1, CONFIG.max_clusters):
             k = i + 1
@@ -70,12 +72,16 @@ def build_k_means(factors: np.ndarray) -> KMeans:
             start = time()
             model = KMeans(n_clusters=k, n_init=50, max_iter=500).fit(factors)
             score = silhouette_score(factors, model.labels_)
+            scores.append(score)
             LOG.info('Finished K-means with %s clusters in %s seconds, score: %s',
                      k, round(time()-start), score)
             if score > best_score:
                 best_model = model
                 best_score = score
                 LOG.debug('Better score! Saving model with k=%s.', score)
+
+        scores = pd.DataFrame(scores, index=np.arange(1, len(scores) + 1))
+        scores.to_csv('outputs/k_means_silhouette.csv')
 
         model = best_model
 
@@ -92,6 +98,7 @@ def build_k_medoids(factors: np.ndarray):
         model = KMedoids(n_clusters=k, max_iter=500).fit(factors)
     else:
         best_model, best_score = None, float('inf')
+        scores = []
 
         for i in range(1, CONFIG.max_clusters):
             k = i + 1
@@ -99,6 +106,7 @@ def build_k_medoids(factors: np.ndarray):
             start = time()
             model = KMedoids(n_clusters=k, max_iter=500).fit(factors)
             score = silhouette_score(factors, model.labels_)
+            scores.append(score)
             LOG.info('Finished K-medoids with %s clusters in %s seconds, score: %s',
                      k, round(time()-start), score)
             if score > best_score:
@@ -107,6 +115,9 @@ def build_k_medoids(factors: np.ndarray):
                 LOG.debug('Better score! Saving model with k=%s.', score)
 
         model = best_model
+
+        scores = pd.DataFrame(scores, index=np.arange(1, len(scores) + 1))
+        scores.to_csv('outputs/k_medoids_silhouette.csv')
 
     return model
 
