@@ -14,6 +14,7 @@ from sklearn.decomposition import FactorAnalysis
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn_extra.cluster import KMedoids
+from sklearn.random_projection import GaussianRandomProjection
 
 from modules.dataset import Dataset, DATASET_PATHS
 from modules.logger import build_logger
@@ -147,8 +148,11 @@ def main():
     # factor analysis
     LOG.info('Starting factor analysis with %s factors...', CONFIG.num_factors)
     start = time()
-    model = FactorAnalysis(n_components=CONFIG.num_factors)
-    factors = model.fit_transform(metrics)  # num_metrics * num_factors
+    # model = FactorAnalysis(n_components=CONFIG.num_factors)
+    # factors = model.fit_transform(metrics)  # num_metrics * num_factors
+    rng = np.random.RandomState(74)
+    model = GaussianRandomProjection(eps=0.999, random_state=rng)
+    factors = model.fit_transform(metrics)
     LOG.debug('Dimension before factor analysis: %s', metrics.shape)
     LOG.debug('Dimension after factor analysis: %s', factors.shape)
     LOG.info('Finished factor analysis in %s seconds.', round(time()-start))

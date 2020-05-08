@@ -236,8 +236,8 @@ def main():
     online_c_data = Dataset(file_path=DATASET_PATHS['online_workload_C'])
     test_data = Dataset(file_path=DATASET_PATHS['test'])
 
-    # run_on_b_data()
-    run_on_test_data()
+    run_on_b_data()
+    # run_on_test_data()
 
 
 if __name__ == "__main__":
