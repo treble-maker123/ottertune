@@ -221,33 +221,26 @@ def main():
 
     def run_on_test_data():
         latencies = []
+        nearest_neighbors = []
         for curr_wl in tqdm(test_data.get_workload_ids()):
             S = make_s_matrix(curr_wl, offline_data, online_c_data, 'outputs/s_matrix_test.npy')
             closest_observed_wl = find_closest_observed_wl(
                 curr_wl, offline_data, online_c_data, S)
             model, ss_x, ss_y = train_concat_model(curr_wl, offline_data, online_c_data, closest_observed_wl)
             latencies.append(eval_model(curr_wl, model, test_data, ss_x, ss_y))
+            nearest_neighbors.append(closest_observed_wl)
         output_test_data = test_data.get_dataframe()
         output_test_data['latency prediction'] = latencies
+        output_test_data['nearest neighbor'] = nearest_neighbors
         output_test_data.to_csv('outputs/test_filled.csv', index=False)
-
-    def get_nearest_neighbors():
-        nearest_neighbors = []
-        for curr_wl in tqdm(natsorted(test_data.get_workload_ids())):
-            S = make_s_matrix(curr_wl, offline_data, online_c_data, 'outputs/s_matrix_test.npy')
-            closest_observed_wl = find_closest_observed_wl(
-                curr_wl, offline_data, online_c_data, S)
-            nearest_neighbors.append([curr_wl, closest_observed_wl])
-        np.savetxt('outputs/nearest_neigbors.csv', np.array(nearest_neighbors), delimiter=',', fmt='%s')
 
     offline_data = Dataset(file_path=DATASET_PATHS['offline_workload'])
     online_b_data = Dataset(file_path=DATASET_PATHS['online_workload_B'])
     online_c_data = Dataset(file_path=DATASET_PATHS['online_workload_C'])
     test_data = Dataset(file_path=DATASET_PATHS['test'])
 
-    run_on_b_data()
-    # get_nearest_neighbors()
-    # run_on_test_data()
+    # run_on_b_data()
+    run_on_test_data()
 
 
 if __name__ == "__main__":
